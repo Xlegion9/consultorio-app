@@ -25,7 +25,7 @@ with st.sidebar.form("form_cadastro", clear_on_submit=True):
     whatsapp = st.text_input("WhatsApp (com DDD, apenas números):", placeholder="11999999999")
     data_consulta = st.date_input("Data da Consulta Principal:", value=datetime.today().date())
     
-    enviado = st.form_submit_form("Salvar Paciente")
+    enviado = st.form_submit_button("Salvar Paciente")
     if enviado:
         if nome and whatsapp:
             # Limpar o número de whatsapp de espaços ou caracteres
