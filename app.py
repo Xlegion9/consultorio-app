@@ -26,8 +26,6 @@ def gerar_link_google_agenda(nome_paciente, tipo_atendimento):
     detalhes = f"Agendamento realizado via Sistema de Retornos."
     titulo_enc = urllib.parse.quote(titulo)
     detalhes_enc = urllib.parse.quote(detalhes)
-    # Abre a agenda na data de hoje para a secretária escolher o melhor horário
-    data_formatada = datetime.today().strftime("%Y%m%dT%H%M%SZ")
     return f"https://calendar.google.com/calendar/render?action=TEMPLATE&text={titulo_enc}&details={detalhes_enc}"
 
 # --- ABAS PRINCIPAIS DO SISTEMA ---
@@ -69,7 +67,8 @@ if not df.empty:
 else:
     df['dias_desde_consulta'] = 0
 
-retornos_pendentes = df[(df['status_retorno'] == 'PENDENTE') & (df['dias_desde_consulta'] >= 20) & (df['dias_desde_consulta'] <= 30)]
+# Exibe todos de 0 até 30 dias com retorno pendente
+retornos_pendentes = df[(df['status_retorno'] == 'PENDENTE') & (df['dias_desde_consulta'] >= 0) & (df['dias_desde_consulta'] <= 30)]
 reengajamento_pendente = df[(df['status_retorno'] == 'RETORNO_REALIZADO') & (df['dias_desde_consulta'] >= 60)]
 
 # --- ABA 1: DASHBOARD DA SECRETÁRIA ---
@@ -77,8 +76,8 @@ with aba_dashboard:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("⏳ Agendar Retorno Grátis (20 a 30 dias)")
-        st.caption("Pacientes que fizeram a consulta principal e ainda não usaram o retorno.")
+        st.subheader("⏳ Agendar Retorno Grátis (Até 30 dias)")
+        st.caption("Todos os pacientes que consultaram nos últimos 30 dias e ainda estão com retorno pendente.")
         
         if retornos_pendentes.empty:
             st.info("Nenhum paciente pendente de retorno nesta janela para hoje.")
@@ -93,7 +92,7 @@ with aba_dashboard:
                     link_wa = f"https://wa.me/55{row['whatsapp']}?text={msg_encoded}"
                     link_agenda = gerar_link_google_agenda(row['nome'], "Retorno Gratuito")
                     
-                    # Botões de Ação
+                    # Botões de Ação Restaurados
                     st.link_button("💬 Chamar no WhatsApp", link_wa, type="primary", use_container_width=True)
                     
                     c1, c2 = st.columns(2)
@@ -122,7 +121,7 @@ with aba_dashboard:
                     link_wa = f"https://wa.me/55{row['whatsapp']}?text={msg_encoded}"
                     link_agenda = gerar_link_google_agenda(row['nome'], "Consulta Paga (Reengajamento)")
                     
-                    # Botões de Ação
+                    # Botões de Ação Restaurados
                     st.link_button("💬 Chamar para Consulta Paga", link_wa, type="secondary", use_container_width=True)
                     
                     c1, c2 = st.columns(2)
