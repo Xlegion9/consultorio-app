@@ -22,7 +22,7 @@ else:
     df['whatsapp'] = df['whatsapp'].astype(str)
 
 # --- FUNÇÃO PARA GERAR LINK DO GOOGLE AGENDA ---
-def https://calendar.google.com/calendar/embed?src=dr.romuloronsani%40gmail.com&ctz=America%2FSao_Paulo(nome_paciente, tipo_atendimento):
+def gerar_link_google_agenda(nome_paciente, tipo_atendimento):
     titulo = f"{tipo_atendimento} - {nome_paciente}"
     detalhes = f"Agendamento realizado via Sistema de Retornos."
     titulo_enc = urllib.parse.quote(titulo)
@@ -201,12 +201,11 @@ with aba_dashboard:
                         st.success("Paciente reativado no fluxo de consultas!")
                         st.rerun()
 
-    # --- SEÇÃO INSERIDA: INCORPORAÇÃO VISUAL DA AGENDA GOOGLE ---
+    # --- SEÇÃO DA AGENDA GOOGLE INCORPORADA COM O SEU LINK ---
     st.markdown("---")
     st.subheader("📅 Grade de Horários do Consultório (Google Agenda)")
-    # Substitua o link abaixo pela URL pública da sua agenda se quiser visualizá-la aqui dentro
-    link_incorporado = "https://calendar.google.com/calendar/embed?src=pt.brazilian%23holiday%40group.v.calendar.google.com&ctz=America%2FSao_Paulo"
-    st.components.v1.iframe(link_incorporado, height=500, scrolling=True)
+    link_agenda_romulo = "https://calendar.google.com/calendar/embed?src=dr.romuloronsani%40gmail.com&ctz=America%2FSao_Paulo"
+    st.components.v1.iframe(link_agenda_romulo, height=600, scrolling=True)
 
 
 # --- ABA 3: GERENCIAMENTO (EDITAR E EXCLUIR) ---
