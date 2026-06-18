@@ -11,14 +11,15 @@ st.title("🏥 Sistema Avançado de Controle de Retornos e Reengajamento")
 # Arquivo para salvar os dados
 DATA_FILE = "pacientes_dados.csv"
 
-# Carregar dados existentes ou criar um novo
+# CORREÇÃO AQUI: Forçar a coluna 'whatsapp' a ser lida estritamente como string (texto)
 if os.path.exists(DATA_FILE):
-    df = pd.read_csv(DATA_FILE)
+    df = pd.read_csv(DATA_FILE, dtype={"whatsapp": str})
     df['data_consulta'] = pd.to_datetime(df['data_consulta']).dt.date
     if 'status_retorno' not in df.columns:
         df['status_retorno'] = 'PENDENTE'
 else:
     df = pd.DataFrame(columns=["nome", "whatsapp", "data_consulta", "status_retorno"])
+    df['whatsapp'] = df['whatsapp'].astype(str)
 
 # --- FUNÇÃO PARA GERAR LINK DO GOOGLE AGENDA ---
 def gerar_link_google_agenda(nome_paciente, tipo_atendimento):
@@ -49,7 +50,7 @@ with aba_cadastro:
                 whatsapp_limpo = "".join(filter(str.isdigit, whatsapp))
                 novo_registro = pd.DataFrame([{
                     "nome": nome,
-                    "whatsapp": whatsapp_limpo,
+                    "whatsapp": str(whatsapp_limpo),
                     "data_consulta": data_consulta,
                     "status_retorno": "PENDENTE"
                 }])
@@ -207,6 +208,9 @@ with aba_gerenciamento:
     if df.empty:
         st.write("Nenhum paciente cadastrado.")
     else:
+        # Garantir que a coluna whatsapp seja interpretada temporariamente como string na visualização
+        df['whatsapp'] = df['whatsapp'].astype(str)
+        
         lista_pacientes = df['nome'].tolist()
         paciente_selecionado = st.selectbox("Selecione o paciente que deseja alterar:", lista_pacientes)
         
@@ -215,7 +219,7 @@ with aba_gerenciamento:
         with st.form("form_edicao"):
             st.write(f"### Editando os dados de: {paciente_selecionado}")
             novo_nome = st.text_input("Nome:", value=df.at[idx_edicao, 'nome'])
-            novo_whatsapp = st.text_input("WhatsApp:", value=df.at[idx_edicao, 'whatsapp'])
+            novo_whatsapp = st.text_input("WhatsApp:", value=str(df.at[idx_edicao, 'whatsapp']))
             nova_data = st.date_input("Data do Último Evento/Consulta:", value=df.at[idx_edicao, 'data_consulta'])
             
             novo_status = st.selectbox(
@@ -230,8 +234,12 @@ with aba_gerenciamento:
             excluiu = c_excluir.form_submit_button("❌ Excluir Paciente", type="secondary")
             
             if salvou:
+                # CORREÇÃO DEFINITIVA: Força a coluna inteira a aceitar objetos/strings antes de injetar o valor
+                df['whatsapp'] = df['whatsapp'].astype(str)
+                whatsapp_filtrado = "".join(filter(str.isdigit, novo_whatsapp))
+                
                 df.at[idx_edicao, 'nome'] = novo_nome
-                df.at[idx_edicao, 'whatsapp'] = "".join(filter(str.isdigit, novo_whatsapp))
+                df.at[idx_edicao, 'whatsapp'] = str(whatsapp_filtrado)
                 df.at[idx_edicao, 'data_consulta'] = nova_data
                 df.at[idx_edicao, 'status_retorno'] = novo_status
                 df.to_csv(DATA_FILE, index=False)
