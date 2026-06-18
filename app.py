@@ -22,7 +22,7 @@ else:
     df['whatsapp'] = df['whatsapp'].astype(str)
 
 # --- FUNÇÃO PARA GERAR LINK DO GOOGLE AGENDA ---
-def gerar_link_google_agenda(nome_paciente, tipo_atendimento):
+def https://calendar.google.com/calendar/embed?src=dr.romuloronsani%40gmail.com&ctz=America%2FSao_Paulo(nome_paciente, tipo_atendimento):
     titulo = f"{tipo_atendimento} - {nome_paciente}"
     detalhes = f"Agendamento realizado via Sistema de Retornos."
     titulo_enc = urllib.parse.quote(titulo)
