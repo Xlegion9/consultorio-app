@@ -1,6 +1,4 @@
-import streamlit as st st.markdown("---")
-st.subheader("📅 Grade de Horários do Consultório (Google Agenda)")
-st.components.v1.iframe("https://calendar.google.com/calendar/embed?src=dr.romuloronsani%40gmail.com&ctz=America%2FSao_Paulo", height=600, scrolling=True)
+import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
@@ -13,7 +11,7 @@ st.title("🏥 Sistema Avançado de Controle de Retornos e Reengajamento")
 # Arquivo para salvar os dados
 DATA_FILE = "pacientes_dados.csv"
 
-# CORREÇÃO AQUI: Forçar a coluna 'whatsapp' a ser lida estritamente como string (texto)
+# Garantir que a coluna 'whatsapp' seja lida estritamente como string (texto)
 if os.path.exists(DATA_FILE):
     df = pd.read_csv(DATA_FILE, dtype={"whatsapp": str})
     df['data_consulta'] = pd.to_datetime(df['data_consulta']).dt.date
@@ -157,7 +155,7 @@ with aba_dashboard:
             for idx, row in reeng_critico.iterrows():
                 with st.container(border=True):
                     st.write(f"👤 **{row['nome']}**")
-                    st.write(f"🔥 Último contato há: {row['dias_desde_consulta']} dias (Passou do prazo ideal de 60 dias)")
+                    st.write(f"🔥 Último contato há: {row['dias_desde_consulta']} dias")
                     
                     msg = f"Olá {row['nome']}, faz um tempo desde sua última consulta de retorno! Como tem passado? Gostaria de agendar uma nova consulta de acompanhamento com o doutor?"
                     msg_encoded = urllib.parse.quote(msg)
@@ -203,6 +201,14 @@ with aba_dashboard:
                         st.success("Paciente reativado no fluxo de consultas!")
                         st.rerun()
 
+    # --- SEÇÃO INSERIDA: INCORPORAÇÃO VISUAL DA AGENDA GOOGLE ---
+    st.markdown("---")
+    st.subheader("📅 Grade de Horários do Consultório (Google Agenda)")
+    # Substitua o link abaixo pela URL pública da sua agenda se quiser visualizá-la aqui dentro
+    link_incorporado = "https://calendar.google.com/calendar/embed?src=pt.brazilian%23holiday%40group.v.calendar.google.com&ctz=America%2FSao_Paulo"
+    st.components.v1.iframe(link_incorporado, height=500, scrolling=True)
+
+
 # --- ABA 3: GERENCIAMENTO (EDITAR E EXCLUIR) ---
 with aba_gerenciamento:
     st.header("⚙️ Editar ou Corrigir Lançamentos")
@@ -210,9 +216,7 @@ with aba_gerenciamento:
     if df.empty:
         st.write("Nenhum paciente cadastrado.")
     else:
-        # Garantir que a coluna whatsapp seja interpretada temporariamente como string na visualização
         df['whatsapp'] = df['whatsapp'].astype(str)
-        
         lista_pacientes = df['nome'].tolist()
         paciente_selecionado = st.selectbox("Selecione o paciente que deseja alterar:", lista_pacientes)
         
@@ -236,7 +240,6 @@ with aba_gerenciamento:
             excluiu = c_excluir.form_submit_button("❌ Excluir Paciente", type="secondary")
             
             if salvou:
-                # CORREÇÃO DEFINITIVA: Força a coluna inteira a aceitar objetos/strings antes de injetar o valor
                 df['whatsapp'] = df['whatsapp'].astype(str)
                 whatsapp_filtrado = "".join(filter(str.isdigit, novo_whatsapp))
                 
