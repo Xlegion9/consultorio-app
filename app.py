@@ -1,4 +1,6 @@
-import streamlit as st
+import streamlit as st st.markdown("---")
+st.subheader("📅 Grade de Horários do Consultório (Google Agenda)")
+st.components.v1.iframe("https://calendar.google.com/calendar/embed?src=dr.romuloronsani%40gmail.com&ctz=America%2FSao_Paulo", height=600, scrolling=True)
 import pandas as pd
 from datetime import datetime
 import os
