@@ -99,7 +99,7 @@ with aba_dashboard:
                         st.rerun()
 
     with col2:
-        st.subheader("🔥 Reengajamento: Nova Consulta Paga (60
+st.subheader("🔥 Reengajamento: Nova Consulta Paga (60+ dias)")
 st.subheader("📋 Todos os Pacientes Cadastrados")
 if not df.empty:
     st.dataframe(df[["nome", "whatsapp", "data_consulta", "status_retorno"]], use_container_width=True)
