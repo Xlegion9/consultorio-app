@@ -67,9 +67,16 @@ if not df.empty:
 else:
     df['dias_desde_consulta'] = 0
 
-# Exibe todos de 0 até 30 dias com retorno pendente
+# Coluna 1: Quem consultou em até 30 dias e ainda não fez o retorno
 retornos_pendentes = df[(df['status_retorno'] == 'PENDENTE') & (df['dias_desde_consulta'] >= 0) & (df['dias_desde_consulta'] <= 30)]
-reengajamento_pendente = df[(df['status_retorno'] == 'RETORNO_REALIZADO') & (df['dias_desde_consulta'] >= 60)]
+
+# NOVO REENGAJAMENTO - Dividido em dois perfis:
+# Perfil A: Fez o retorno (RETORNO_REALIZADO) e já se passaram 60 dias ou mais
+reeng_pos_retorno = df[(df['status_retorno'] == 'RETORNO_REALIZADO') & (df['dias_desde_consulta'] >= 60)]
+
+# Perfil B: NUNCA fez o retorno (PENDENTE) e o prazo estourou (passou de 30 dias). Agora só consulta paga!
+reeng_sem_retorno = df[(df['status_retorno'] == 'PENDENTE') & (df['dias_desde_consulta'] > 30)]
+
 
 # --- ABA 1: DASHBOARD DA SECRETÁRIA ---
 with aba_dashboard:
@@ -77,22 +84,21 @@ with aba_dashboard:
     
     with col1:
         st.subheader("⏳ Agendar Retorno Grátis (Até 30 dias)")
-        st.caption("Todos os pacientes que consultaram nos últimos 30 dias e ainda estão com retorno pendente.")
+        st.caption("Pacientes dentro do prazo legal para agendar o retorno gratuito.")
         
         if retornos_pendentes.empty:
-            st.info("Nenhum paciente pendente de retorno nesta janela para hoje.")
+            st.info("Nenhum paciente pendente de retorno nesta janela.")
         else:
             for idx, row in retornos_pendentes.iterrows():
                 with st.container(border=True):
                     st.write(f"👤 **{row['nome']}**")
-                    st.write(f"📅 Consultou em: {row['data_consulta'].strftime('%d/%m/%Y')} ({row['dias_desde_consulta']} dias atrás)")
+                    st.write(f"📅 Consultou há: {row['dias_desde_consulta']} dias ({row['data_consulta'].strftime('%d/%m/%Y')})")
                     
                     msg = f"Olá {row['nome']}, tudo bem? Identificamos que sua consulta completou {row['dias_desde_consulta']} dias. Vamos agendar seu retorno gratuito para esta semana?"
                     msg_encoded = urllib.parse.quote(msg)
                     link_wa = f"https://wa.me/55{row['whatsapp']}?text={msg_encoded}"
                     link_agenda = gerar_link_google_agenda(row['nome'], "Retorno Gratuito")
                     
-                    # Botões de Ação Restaurados
                     st.link_button("💬 Chamar no WhatsApp", link_wa, type="primary", use_container_width=True)
                     
                     c1, c2 = st.columns(2)
@@ -105,32 +111,61 @@ with aba_dashboard:
                         st.rerun()
 
     with col2:
-        st.subheader("🔥 Reengajamento: Nova Consulta Paga (60+ dias)")
-        st.caption("Pacientes que já fizeram o retorno grátis, mas estão sumidos há mais de 60 dias.")
+        st.subheader("🔥 Reengajamento: Nova Consulta Paga")
+        st.caption("Pacientes sumidos que precisam retornar para acompanhamento pago.")
         
-        if reengajamento_pendente.empty:
-            st.info("Nenhum paciente elegível para captação/nova consulta hoje.")
+        # --- SUB-SESSÃO 1: JÁ FIZERAM RETORNO E SUMIRAM HÁ 60+ DIAS ---
+        st.markdown("##### 🔁 Pós-Retorno Realizado (Há 60+ dias)")
+        if reeng_pos_retorno.empty:
+            st.caption("Nenhum paciente nesta situação hoje.")
         else:
-            for idx, row in reengajamento_pendente.iterrows():
+            for idx, row in reeng_pos_retorno.iterrows():
                 with st.container(border=True):
-                    st.write(f"👤 **{row['nome']}**")
-                    st.write(f"⏳ Último retorno/contato há {row['dias_desde_consulta']} dias.")
+                    st.write(f"👤 **{row['nome']}** (Fez o retorno grátis)")
+                    st.write(f"⏳ Último contato há: {row['dias_desde_consulta']} dias")
                     
                     msg = f"Olá {row['nome']}, faz um tempo desde sua última consulta de retorno! Como tem passado? Gostaria de agendar uma nova consulta de acompanhamento com o doutor?"
                     msg_encoded = urllib.parse.quote(msg)
                     link_wa = f"https://wa.me/55{row['whatsapp']}?text={msg_encoded}"
-                    link_agenda = gerar_link_google_agenda(row['nome'], "Consulta Paga (Reengajamento)")
+                    link_agenda = gerar_link_google_agenda(row['nome'], "Consulta Paga (Acompanhamento)")
                     
-                    # Botões de Ação Restaurados
                     st.link_button("💬 Chamar para Consulta Paga", link_wa, type="secondary", use_container_width=True)
                     
                     c1, c2 = st.columns(2)
                     c1.link_button("📆 Abrir Google Agenda", link_agenda, use_container_width=True)
-                    if c2.button("Reiniciar Ciclo", key=f"btn_reeng_{idx}", use_container_width=True):
+                    if c2.button("Nova Consulta", key=f"btn_reeng_pos_{idx}", use_container_width=True):
                         df.at[idx, 'status_retorno'] = 'PENDENTE'
                         df.at[idx, 'data_consulta'] = data_atual
                         df.to_csv(DATA_FILE, index=False)
-                        st.success("Novo ciclo de consulta iniciado!")
+                        st.success("Novo ciclo iniciado!")
+                        st.rerun()
+                        
+        st.markdown("---")
+        
+        # --- SUB-SESSÃO 2: NÃO FIZERAM RETORNO E O PRAZO CADUCOU (30+ DIAS) ---
+        st.markdown("##### ⚠️ Perderam o Prazo do Retorno (Expirado)")
+        if reeng_sem_retorno.empty:
+            st.caption("Nenhum paciente com prazo expirado hoje.")
+        else:
+            for idx, row in reeng_sem_retorno.iterrows():
+                with st.container(border=True):
+                    st.write(f"👤 **{row['nome']}** (Não realizou retorno no prazo)")
+                    st.write(f"🚨 Consultou há: {row['dias_desde_consulta']} dias (Prazo de 30 dias expirou)")
+                    
+                    msg = f"Olá {row['nome']}, tudo bem? Vimos que seu prazo para o retorno gratuito de 30 dias expirou. Como você está se sentindo? Caso precise dar continuidade ao tratamento, podemos agendar uma nova consulta?"
+                    msg_encoded = urllib.parse.quote(msg)
+                    link_wa = f"https://wa.me/55{row['whatsapp']}?text={msg_encoded}"
+                    link_agenda = gerar_link_google_agenda(row['nome'], "Consulta Paga (Retorno Expirado)")
+                    
+                    st.link_button("💬 Oferecer Nova Consulta", link_wa, type="secondary", use_container_width=True)
+                    
+                    c1, c2 = st.columns(2)
+                    c1.link_button("📆 Abrir Google Agenda", link_agenda, use_container_width=True)
+                    if c2.button("Reativar Paciente", key=f"btn_reeng_exp_{idx}", use_container_width=True):
+                        df.at[idx, 'status_retorno'] = 'PENDENTE'
+                        df.at[idx, 'data_consulta'] = data_atual
+                        df.to_csv(DATA_FILE, index=False)
+                        st.success("Paciente reativado no fluxo de consultas!")
                         st.rerun()
 
 # --- ABA 3: GERENCIAMENTO (EDITAR E EXCLUIR) ---
