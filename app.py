@@ -11,11 +11,10 @@ st.title("🏥 Sistema Avançado de Controle de Retornos e Reengajamento")
 # Arquivo para salvar os dados
 DATA_FILE = "pacientes_dados.csv"
 
-# Carregar dados existentes ou criar um novo com as novas colunas necessárias
+# Carregar dados existentes ou criar um novo
 if os.path.exists(DATA_FILE):
     df = pd.read_csv(DATA_FILE)
     df['data_consulta'] = pd.to_datetime(df['data_consulta']).dt.date
-    # Garantir que colunas novas existam para bases antigas
     if 'status_retorno' not in df.columns:
         df['status_retorno'] = 'PENDENTE'
 else:
@@ -44,7 +43,7 @@ with aba_cadastro:
                     "nome": nome,
                     "whatsapp": whatsapp_limpo,
                     "data_consulta": data_consulta,
-                    "status_retorno": "PENDENTE" # Inicia precisando de retorno
+                    "status_retorno": "PENDENTE"
                 }])
                 df = pd.concat([df, novo_registro], ignore_index=True)
                 df.to_csv(DATA_FILE, index=False)
@@ -60,13 +59,8 @@ if not df.empty:
 else:
     df['dias_desde_consulta'] = 0
 
-# Filtros inteligentes baseados no status real do paciente:
-# Alerta 1: Só mostra quem está PENDENTE (ainda não fez o retorno grátis) e na janela de 20 a 30 dias
 retornos_pendentes = df[(df['status_retorno'] == 'PENDENTE') & (df['dias_desde_consulta'] >= 20) & (df['dias_desde_consulta'] <= 30)]
-
-# Alerta 2: Só mostra para Reengajamento quem JÁ REALIZOU o retorno grátis e sumiu há mais de 60 dias daquela data
 reengajamento_pendente = df[(df['status_retorno'] == 'RETORNO_REALIZADO') & (df['dias_desde_consulta'] >= 60)]
-
 
 # --- ABA 1: DASHBOARD DA SECRETÁRIA ---
 with aba_dashboard:
@@ -92,16 +86,81 @@ with aba_dashboard:
                     c1.link_button("💬 Chamar no WhatsApp", link_wa, type="primary")
                     if c2.button("Confirmar Retorno Realizado", key=f"btn_ret_{idx}"):
                         df.at[idx, 'status_retorno'] = 'RETORNO_REALIZADO'
-                        # Atualiza a data para o dia de hoje (dia em que o retorno aconteceu) para contar os 60 dias a partir daqui
                         df.at[idx, 'data_consulta'] = data_atual 
                         df.to_csv(DATA_FILE, index=False)
                         st.success("Marcado como Retorno Realizado!")
                         st.rerun()
 
     with col2:
-st.subheader("🔥 Reengajamento: Nova Consulta Paga (60+ dias)")
-st.subheader("📋 Todos os Pacientes Cadastrados")
-if not df.empty:
+        st.subheader("🔥 Reengajamento: Nova Consulta Paga (60+ dias)")
+        st.caption("Pacientes que já fizeram o retorno grátis, mas estão sumidos há mais de 60 dias.")
+        
+        if reengajamento_pendente.empty:
+            st.info("Nenhum paciente elegível para captação/nova consulta hoje.")
+        else:
+            for idx, row in reengajamento_pendente.iterrows():
+                with st.container(border=True):
+                    st.write(f"👤 **{row['nome']}**")
+                    st.write(f"⏳ Último retorno/contato há {row['dias_desde_consulta']} dias.")
+                    
+                    msg = f"Olá {row['nome']}, faz um tempo desde sua última consulta de retorno! Como tem passado? Gostaria de agendar uma nova consulta de acompanhamento com o doutor?"
+                    msg_encoded = urllib.parse.quote(msg)
+                    link_wa = f"https://wa.me/55{row['whatsapp']}?text={msg_encoded}"
+                    
+                    c1, c2 = st.columns(2)
+                    c1.link_button("💬 Chamar para Consulta Paga", link_wa, type="secondary")
+                    if c2.button("Reiniciar Ciclo (Nova Consulta)", key=f"btn_reeng_{idx}"):
+                        df.at[idx, 'status_retorno'] = 'PENDENTE'
+                        df.at[idx, 'data_consulta'] = data_atual
+                        df.to_csv(DATA_FILE, index=False)
+                        st.success("Novo ciclo de consulta iniciado!")
+                        st.rerun()
+
+# --- ABA 3: GERENCIAMENTO (EDITAR E EXCLUIR) ---
+with aba_gerenciamento:
+    st.header("⚙️ Editar ou Corrigir Lançamentos")
+    st.caption("Use esta aba para corrigir nomes, telefones, datas ou mudar manualmente o status do paciente.")
+    
+    if df.empty:
+        st.write("Nenhum paciente cadastrado.")
+    else:
+        lista_pacientes = df['nome'].tolist()
+        paciente_selecionado = st.selectbox("Selecione o paciente que deseja alterar:", lista_pacientes)
+        
+        idx_edicao = df[df['nome'] == paciente_selecionado].index[0]
+        
+        with st.form("form_edicao"):
+            st.write(f"### Editando os dados de: {paciente_selecionado}")
+            novo_nome = st.text_input("Nome:", value=df.at[idx_edicao, 'nome'])
+            novo_whatsapp = st.text_input("WhatsApp:", value=df.at[idx_edicao, 'whatsapp'])
+            nova_data = st.date_input("Data do Último Evento/Consulta:", value=df.at[idx_edicao, 'data_consulta'])
+            
+            novo_status = st.selectbox(
+                "Status Atual do Paciente:", 
+                ["PENDENTE", "RETORNO_REALIZADO"],
+                index=0 if df.at[idx_edicao, 'status_retorno'] == 'PENDENTE' else 1
+            )
+            
+            c_salvar, c_excluir = st.columns([1, 4])
+            
+            salvou = c_salvar.form_submit_button("Salvar Alterações", type="primary")
+            excluiu = c_excluir.form_submit_button("❌ Excluir Paciente", type="secondary")
+            
+            if salvou:
+                df.at[idx_edicao, 'nome'] = novo_nome
+                df.at[idx_edicao, 'whatsapp'] = "".join(filter(str.isdigit, novo_whatsapp))
+                df.at[idx_edicao, 'data_consulta'] = nova_data
+                df.at[idx_edicao, 'status_retorno'] = novo_status
+                df.to_csv(DATA_FILE, index=False)
+                st.success("Dados updated com sucesso!")
+                st.rerun()
+                
+            if excluiu:
+                df = df.drop(idx_edicao).reset_index(drop=True)
+                df.to_csv(DATA_FILE, index=False)
+                st.warning("Paciente removido do sistema.")
+                st.rerun()
+
+    st.markdown("---")
+    st.subheader("📋 Visualização Geral do Banco de Dados")
     st.dataframe(df[["nome", "whatsapp", "data_consulta", "status_retorno"]], use_container_width=True)
-else:
-    st.write("Nenhum paciente cadastrado ainda.")
