@@ -20,6 +20,16 @@ if os.path.exists(DATA_FILE):
 else:
     df = pd.DataFrame(columns=["nome", "whatsapp", "data_consulta", "status_retorno"])
 
+# --- FUNÇÃO PARA GERAR LINK DO GOOGLE AGENDA ---
+def gerar_link_google_agenda(nome_paciente, tipo_atendimento):
+    titulo = f"{tipo_atendimento} - {nome_paciente}"
+    detalhes = f"Agendamento realizado via Sistema de Retornos."
+    titulo_enc = urllib.parse.quote(titulo)
+    detalhes_enc = urllib.parse.quote(detalhes)
+    # Abre a agenda na data de hoje para a secretária escolher o melhor horário
+    data_formatada = datetime.today().strftime("%Y%m%dT%H%M%SZ")
+    return f"https://calendar.google.com/calendar/render?action=TEMPLATE&text={titulo_enc}&details={detalhes_enc}"
+
 # --- ABAS PRINCIPAIS DO SISTEMA ---
 aba_dashboard, aba_cadastro, aba_gerenciamento = st.tabs([
     "📊 Painel de Controle", 
@@ -81,10 +91,14 @@ with aba_dashboard:
                     msg = f"Olá {row['nome']}, tudo bem? Identificamos que sua consulta completou {row['dias_desde_consulta']} dias. Vamos agendar seu retorno gratuito para esta semana?"
                     msg_encoded = urllib.parse.quote(msg)
                     link_wa = f"https://wa.me/55{row['whatsapp']}?text={msg_encoded}"
+                    link_agenda = gerar_link_google_agenda(row['nome'], "Retorno Gratuito")
+                    
+                    # Botões de Ação
+                    st.link_button("💬 Chamar no WhatsApp", link_wa, type="primary", use_container_width=True)
                     
                     c1, c2 = st.columns(2)
-                    c1.link_button("💬 Chamar no WhatsApp", link_wa, type="primary")
-                    if c2.button("Confirmar Retorno Realizado", key=f"btn_ret_{idx}"):
+                    c1.link_button("📆 Abrir Google Agenda", link_agenda, use_container_width=True)
+                    if c2.button("Confirmar Retorno", key=f"btn_ret_{idx}", use_container_width=True):
                         df.at[idx, 'status_retorno'] = 'RETORNO_REALIZADO'
                         df.at[idx, 'data_consulta'] = data_atual 
                         df.to_csv(DATA_FILE, index=False)
@@ -106,10 +120,14 @@ with aba_dashboard:
                     msg = f"Olá {row['nome']}, faz um tempo desde sua última consulta de retorno! Como tem passado? Gostaria de agendar uma nova consulta de acompanhamento com o doutor?"
                     msg_encoded = urllib.parse.quote(msg)
                     link_wa = f"https://wa.me/55{row['whatsapp']}?text={msg_encoded}"
+                    link_agenda = gerar_link_google_agenda(row['nome'], "Consulta Paga (Reengajamento)")
+                    
+                    # Botões de Ação
+                    st.link_button("💬 Chamar para Consulta Paga", link_wa, type="secondary", use_container_width=True)
                     
                     c1, c2 = st.columns(2)
-                    c1.link_button("💬 Chamar para Consulta Paga", link_wa, type="secondary")
-                    if c2.button("Reiniciar Ciclo (Nova Consulta)", key=f"btn_reeng_{idx}"):
+                    c1.link_button("📆 Abrir Google Agenda", link_agenda, use_container_width=True)
+                    if c2.button("Reiniciar Ciclo", key=f"btn_reeng_{idx}", use_container_width=True):
                         df.at[idx, 'status_retorno'] = 'PENDENTE'
                         df.at[idx, 'data_consulta'] = data_atual
                         df.to_csv(DATA_FILE, index=False)
@@ -119,7 +137,6 @@ with aba_dashboard:
 # --- ABA 3: GERENCIAMENTO (EDITAR E EXCLUIR) ---
 with aba_gerenciamento:
     st.header("⚙️ Editar ou Corrigir Lançamentos")
-    st.caption("Use esta aba para corrigir nomes, telefones, datas ou mudar manualmente o status do paciente.")
     
     if df.empty:
         st.write("Nenhum paciente cadastrado.")
@@ -152,7 +169,7 @@ with aba_gerenciamento:
                 df.at[idx_edicao, 'data_consulta'] = nova_data
                 df.at[idx_edicao, 'status_retorno'] = novo_status
                 df.to_csv(DATA_FILE, index=False)
-                st.success("Dados updated com sucesso!")
+                st.success("Dados atualizados com sucesso!")
                 st.rerun()
                 
             if excluiu:
